@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+  <meta charset="UTF-8">
+  <title>Вхід</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+  <h2>Реєстрація / Вхід</h2>
+  <input type="email" id="email" placeholder="Email">
+  <input type="password" id="password" placeholder="Пароль">
+  <button onclick="signUp()">Зареєструватись</button>
+  <button onclick="signIn()">Увійти</button>
+  <p id="msg"></p>
+
+  <script>
+    // const supabase = supabase.createClient('https://pcxhqabkwxfvjywwglss.supabase.co', 'sb_publishable_7fWpSUB3KAEzBhVtPdMR4A_8-YcE-7t');
+    // увага: через ім'я supabase в CDN треба так:
+    const client = window.supabase.createClient('https://pcxhqabkwxfvjywwglss.supabase.co', 'sb_publishable_7fWpSUB3KAEzBhVtPdMR4A_8-YcE-7t');
+
+    async function signUp() {
+      const { data, error } = await client.auth.signUp({
+        email: document.getElementById('email').value,
+        password: document.getElementById('password').value
+      });
+      document.getElementById('msg').textContent = error ? error.message : 'Лист надіслано!';
+    }
+
+    async function signIn() {
+      const { data, error } = await client.auth.signInWithPassword({
+        email: document.getElementById('email').value,
+        password: document.getElementById('password').value
+      });
+      document.getElementById('msg').textContent = error ? error.message : 'Ви увійшли!';
+    }
+  </script>
+</body>
+</html>
