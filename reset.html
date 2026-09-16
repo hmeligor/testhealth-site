@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+  <meta charset="UTF-8">
+  <title>Новий пароль</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+  <h2>Встановіть новий пароль</h2>
+  <div id="reset-form" style="display:none">
+    <input type="password" id="new-password" placeholder="Новий пароль"><br><br>
+    <button onclick="updatePassword()">Зберегти</button>
+    <p id="msg"></p>
+  </div>
+
+  <script>
+    //const client = window.supabase.createClient('ВАШ_URL', 'ВАШ_ANON_KEY');
+    const client = window.supabase.createClient('https://pcxhqabkwxfvjywwglss.supabase.co', 'sb_publishable_7fWpSUB3KAEzBhVtPdMR4A_8-YcE-7t');
+    // Коли користувач переходить за посиланням у листі, Supabase надсилає подію PASSWORD_RECOVERY
+    client.auth.onAuthStateChange((event) => {
+      if (event === 'PASSWORD_RECOVERY') {
+        document.getElementById('reset-form').style.display = 'block';
+      }
+    });
+
+    async function updatePassword() {
+      const password = document.getElementById('new-password').value;
+      const { error } = await client.auth.updateUser({ password });
+      const el = document.getElementById('msg');
+      if (error) {
+        el.textContent = error.message;
+        el.style.color = 'red';
+      } else {
+        el.textContent = 'Пароль змінено! Тепер можете увійти.';
+        el.style.color = 'green';
+        setTimeout(() => window.location.href = 'index.html', 2000);
+      }
+    }
+  </script>
+</body>
+</html>
