@@ -2,9 +2,9 @@
 <html lang="uk">
 <head>
   <meta charset="UTF-8">
-  <title>Вхід</title>
+  <title>Вхід на сайт</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <style>
+    <style>
     body {
           font-family: sans-serif;
           text-align: center;
@@ -13,37 +13,76 @@
           background-color: #f9f9f9;
           color: #321d49;
         }
-    h1 { color: #2c3e50; border-bottom: 2px solid #f8272a; padding-bottom: 10px; }
+    h2 { color: #2c3e50; border-bottom: 2px solid #f8272a; padding-bottom: 10px; }
   </style>
 </head>
 <body>
-  <h2>Реєстрація / Вхід</h2>
-  <input type="email" id="email" placeholder="Email">
-  <input type="password" id="password" placeholder="Пароль">
-  <button onclick="signUp()">Зареєструватись</button>
-  <button onclick="signIn()">Увійти</button>
-  <p id="msg"></p>
+  <div id="auth-form">
+    <h2>Вхід / Реєстрація</h2>
+    <input type="email" id="email" placeholder="Email"><br><br>
+    <input type="password" id="password" placeholder="Пароль"><br><br>
+    <button onclick="signIn()">Увійти</button>
+    <button onclick="signUp()">Зареєструватись</button><br><br>
+    <a href="#" onclick="resetPassword(); return false;">Забули пароль?</a>
+    <p id="msg"></p>
+  </div>
 
   <script>
-    // const supabase = supabase.createClient('https://pcxhqabkwxfvjywwglss.supabase.co', 'sb_publishable_7fWpSUB3KAEzBhVtPdMR4A_8-YcE-7t');
-    // увага: через ім'я supabase в CDN треба так:
-    const client = window.supabase.createClient('https://pcxhqabkwxfvjywwglss.supabase.co', 'sb_publishable_7fWpSUB3KAEzBhVtPdMR4A_8-YcE-7t');
+    const SUPABASE_URL = 'https://pcxhqabkwxfvjywwglss.supabase.co';
+    const SUPABASE_KEY = 'sb_publishable_7fWpSUB3KAEzBhVtPdMR4A_8-YcE-7t';
+    const client = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+    function showMsg(text, isError = true) {
+      const el = document.getElementById('msg');
+      el.textContent = text;
+      el.style.color = isError ? 'red' : 'green';
+    }
 
     async function signUp() {
-      const { data, error } = await client.auth.signUp({
-        email: document.getElementById('email').value,
-        password: document.getElementById('password').value
-      });
-      document.getElementById('msg').textContent = error ? error.message : 'Лист надіслано!';
+      const email = document.getElementById('email').value;
+      const password = document.getElementById('password').value;
+      const { error } = await client.auth.signUp({ email, password });
+
+      if (error) {
+        // Саме тут ми перевіряємо, чи існує користувач
+        if (error.message.includes('already registered') || error.message.includes('already been registered')) {
+          showMsg('Користувач із таким email вже існує. Спробуйте увійти.');
+        } else {
+          showMsg(error.message);
+        }
+      } else {
+        showMsg('На пошту надіслано лист із підтвердженням. Перейдіть за посиланням у листі.', false);
+      }
     }
 
     async function signIn() {
-      const { data, error } = await client.auth.signInWithPassword({
+      const { error } = await client.auth.signInWithPassword({
         email: document.getElementById('email').value,
         password: document.getElementById('password').value
       });
-      document.getElementById('msg').textContent = error ? error.message : 'Ви увійшли!';
+      if (error) {
+        showMsg('Невірний email або пароль.');
+      } else {
+        window.location.href = 'dashboard.html'; // ← перенаправлення після входу
+      }
     }
+
+    async function resetPassword() {
+      const email = document.getElementById('email').value;
+      if (!email) {
+        showMsg('Спочатку введіть ваш email у полі вище.');
+        return;
+      }
+      const { error } = await client.auth.resetPasswordForEmail(email, {
+        redirectTo: window.location.origin + '/reset.html'
+      });
+      showMsg(error ? error.message : 'Лист для відновлення пароля надіслано на пошту.', !error);
+    }
+
+    // Якщо вже залогінений — одразу на dashboard
+    client.auth.getSession().then(({ data }) => {
+      if (data.session) window.location.href = 'dashboard.html';
+    });
   </script>
 </body>
 </html>
