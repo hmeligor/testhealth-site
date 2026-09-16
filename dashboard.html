@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+  <meta charset="UTF-8">
+  <title>Мій кабінет</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+  <h2>Ви увійшли!</h2>
+  <p id="user-email"></p>
+  <button onclick="signOut()">Вийти</button>
+
+  <script>
+    //const client = window.supabase.createClient('ВАШ_URL', 'ВАШ_ANON_KEY');
+    const client = window.supabase.createClient('https://pcxhqabkwxfvjywwglss.supabase.co', 'sb_publishable_7fWpSUB3KAEzBhVtPdMR4A_8-YcE-7t');
+    client.auth.getSession().then(({ data }) => {
+      if (!data.session) {
+        window.location.href = 'index.html'; // незалогінений — на вхід
+      } else {
+        document.getElementById('user-email').textContent = data.session.user.email;
+      }
+    });
+
+    async function signOut() {
+      await client.auth.signOut();
+      window.location.href = 'index.html';
+    }
+  </script>
+</body>
+</html>
