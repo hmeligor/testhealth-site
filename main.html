@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+  <meta charset="UTF-8">
+  <title>Головна</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    body { margin: 0; font-family: sans-serif; }
+    /* Меню */
+    nav { background: #333; }
+    nav ul { list-style: none; margin: 0; padding: 0; display: flex; }
+    nav li { position: relative; }
+    nav a { display: block; color: #fff; padding: 14px 18px; text-decoration: none; }
+    nav a:hover { background: #555; }
+    nav li ul { display: none; position: absolute; background: #444; min-width: 160px; }
+    nav li:hover ul { display: block; }
+    /* Контент із відступами зліва та справа */
+    .container { max-width: 900px; margin: 0 auto; padding: 20px; }
+    table { border-collapse: collapse; width: 100%; margin-top: 20px; }
+    th, td { border: 1px solid #ccc; padding: 8px; text-align: center; }
+    input, select { padding: 6px; margin: 4px 0; }
+    button { padding: 8px 16px; cursor: pointer; }
+  </style>
+</head>
+<body>
+  <nav>
+    <ul>
+      <li><a href="#">Меню1 ▾</a>
+        <ul>
+          <li><a href="#">Меню 1-1</a></li>
+          <li><a href="#">Меню 1-2</a></li>
+        </ul>
+      </li>
+      <li><a href="#">Меню2 ▾</a>
+        <ul>
+          <li><a href="#">Меню 2-1</a></li>
+          <li><a href="#">Меню 2-2</a></li>
+        </ul>
+      </li>
+      <li style="margin-left:auto"><a href="#" onclick="signOut(); return false;">Вийти</a></li>
+    </ul>
+  </nav>
+
+  <div class="container">
+    <h2>Мої дані</h2>
+
+    <!-- Форма введення (для користувача) -->
+    <div id="user-section">
+      <input type="hidden" id="edit-id">
+      <p>Дата аналізу: <input type="date" id="test_date"></p>
+      <p>TSH: <input type="number" step="0.01" id="tsh"></p>
+      <p>T3F: <input type="number" step="0.01" id="t3f"></p>
+      <p>T4F: <input type="number" step="0.01" id="t4f"></p>
+      <p>ATPA: <input type="number" step="0.01" id="atpa"></p>
+      <button onclick="saveResult()">Зберегти</button>
+      <p id="msg"></p>
+
+      <h3>Мої записи</h3>
+      <table>
+        <thead>
+          <tr><th>Дата</th><th>TSH</th><th>T3F</th><th>T4F</th><th>ATPA</th><th></th></tr>
+        </thead>
+        <tbody id="results-body"></tbody>
+      </table>
+    </div>
+
+    <!-- Місце для майбутнього розділу спеціаліста -->
+    <div id="specialist-section" style="display:none">
+      <p>Розділ спеціаліста буде додано пізніше.</p>
+    </div>
+  </div>
+
+  <script>
+    const client = window.supabase.createClient('https://pcxhqabkwxfvjywwglss.supabase.co', 'sb_publishable_7fWpSUB3KAEzBhVtPdMR4A_8-YcE-7t');
+    let currentUser = null;
+
+    async function init() {
+      const { data } = await client.auth.getSession();
+      if (!data.session) { window.location.href = 'index.html'; return; }
+      currentUser = data.session.user;
+
+      // Визначаємо роль і показуємо відповідний розділ
+      const { data: profile } = await client
+        .from('profiles').select('role').eq('id', currentUser.id).single();
+
+      if (profile && profile.role === 'specialist') {
+        document.getElementById('user-section').style.display = 'none';
+        document.getElementById('specialist-section').style.display = 'block';
+      } else {
+        loadResults();
+      }
+    }
+
+    async function saveResult() {
+      const record = {
+        user_id: currentUser.id,
+        test_date: document.getElementById('test_date').value,
+        tsh: document.getElementById('tsh').value || null,
+        t3f: document.getElementById('t3f').value || null,
+        t4f: document.getElementById('t4f').value || null,
+        atpa: document.getElementById('atpa').value || null
+      };
+      const editId = document.getElementById('edit-id').value;
+      const msg = document.getElementById('msg');
+
+      if (!record.test_date) { msg.textContent = 'Вкажіть дату.'; msg.style.color='red'; return; }
+
+      const query = editId
+        ? client.from('test_results').update(record).eq('id', editId)
+        : client.from('test_results').insert(record);
+
+      const { error } = await query;
+      if (error) { msg.textContent = error.message; msg.style.color='red'; }
+      else {
+        msg.textContent = 'Збережено!'; msg.style.color='green';
+        clearForm();
+        loadResults();
+      }
+    }
+
+    async function loadResults() {
+      const { data, error } = await client
+        .from('test_results').select('*')
+        .eq('user_id', currentUser.id)
+        .order('test_date', { ascending: false });
+
+      const body = document.getElementById('results-body');
+      body.innerHTML = '';
+      if (error) { body.innerHTML = `<tr><td colspan="6">${error.message}</td></tr>`; return; }
+
+      data.forEach(r => {
+        body.innerHTML += `<tr>
+          <td>${r.test_date}</td><td>${r.tsh ?? ''}</td><td>${r.t3f ?? ''}</td>
+          <td>${r.t4f ?? ''}</td><td>${r.atpa ?? ''}</td>
+          <td>
+            <button onclick="editResult(${r.id}, '${r.test_date}', ${r.tsh ?? 'null'}, ${r.t3f ?? 'null'}, ${r.t4f ?? 'null'}, ${r.atpa ?? 'null'})">✎</button>
+            <button onclick="deleteResult(${r.id})">✖</button>
+          </td>
+        </tr>`;
+      });
+    }
+
+    function editResult(id, date, tsh, t3f, t4f, atpa) {
+      document.getElementById('edit-id').value = id;
+      document.getElementById('test_date').value = date;
+      document.getElementById('tsh').value = tsh ?? '';
+      document.getElementById('t3f').value = t3f ?? '';
+      document.getElementById('t4f').value = t4f ?? '';
+      document.getElementById('atpa').value = atpa ?? '';
+      window.scrollTo(0, 0);
+    }
+
+    async function deleteResult(id) {
+      if (!confirm('Видалити цей запис?')) return;
+      const { error } = await client.from('test_results').delete().eq('id', id);
+      if (error) alert(error.message);
+      else loadResults();
+    }
+
+    function clearForm() {
+      document.getElementById('edit-id').value = '';
+      ['test_date','tsh','t3f','t4f','atpa'].forEach(id => document.getElementById(id).value = '');
+    }
+
+    async function signOut() {
+      await client.auth.signOut();
+      window.location.href = 'index.html';
+    }
+
+    init();
+  </script>
+</body>
+</html>
