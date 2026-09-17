@@ -63,7 +63,7 @@
       if (error) {
         showMsg('Невірний email або пароль.');
       } else {
-        window.location.href = 'dashboard.html'; // ← перенаправлення після входу
+        window.location.href = 'main.html'; // ← перенаправлення після входу
       }
     }
 
@@ -81,7 +81,7 @@
 
     // Якщо вже залогінений — одразу на dashboard
     client.auth.getSession().then(({ data }) => {
-      if (data.session) window.location.href = 'dashboard.html';
+      if (data.session) window.location.href = 'main.html';
     });
   </script>
 </body>
