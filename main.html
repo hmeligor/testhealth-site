@@ -6,71 +6,86 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
     body { margin: 0; font-family: sans-serif; }
-    /* Меню */
     nav { background: #333; }
     nav ul { list-style: none; margin: 0; padding: 0; display: flex; }
     nav li { position: relative; }
-    nav a { display: block; color: #fff; padding: 14px 18px; text-decoration: none; }
-    nav a:hover { background: #555; }
-    nav li ul { display: none; position: absolute; background: #444; min-width: 160px; }
+    nav a, nav span { display: block; color: #fff; padding: 14px 18px; text-decoration: none; cursor: pointer; }
+    nav a:hover, nav span:hover { background: #555; }
+    nav li ul { display: none; position: absolute; background: #444; min-width: 170px; right: 0; }
     nav li:hover ul { display: block; }
-    /* Контент із відступами зліва та справа */
+    .spacer { margin-left: auto; display: flex; }
     .container { max-width: 900px; margin: 0 auto; padding: 20px; }
     table { border-collapse: collapse; width: 100%; margin-top: 20px; }
     th, td { border: 1px solid #ccc; padding: 8px; text-align: center; }
     input, select { padding: 6px; margin: 4px 0; }
     button { padding: 8px 16px; cursor: pointer; }
+    /* Модальне вікно профілю */
+    .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.5); display: none; align-items: center; justify-content: center; z-index: 100; }
+    .modal-overlay.show { display: flex; }
+    .modal { background: #fff; padding: 24px; border-radius: 8px; width: 360px; }
   </style>
 </head>
 <body>
   <nav>
     <ul>
       <li><a href="#">Меню1 ▾</a>
-        <ul>
-          <li><a href="#">Меню 1-1</a></li>
-          <li><a href="#">Меню 1-2</a></li>
-        </ul>
+        <ul><li><a href="#">Меню 1-1</a></li><li><a href="#">Меню 1-2</a></li></ul>
       </li>
       <li><a href="#">Меню2 ▾</a>
+        <ul><li><a href="#">Меню 2-1</a></li><li><a href="#">Меню 2-2</a></li></ul>
+      </li>
+      <li class="spacer">
+        <span>Профіль ▾</span>
         <ul>
-          <li><a href="#">Меню 2-1</a></li>
-          <li><a href="#">Меню 2-2</a></li>
+          <li><a href="#" onclick="openProfile(); return false;">Мій профіль</a></li>
+          <li><a href="#" onclick="signOut(); return false;">Вийти</a></li>
         </ul>
       </li>
-      <li style="margin-left:auto"><a href="#" onclick="signOut(); return false;">Вийти</a></li>
     </ul>
   </nav>
 
   <div class="container">
     <h2>Мої дані</h2>
-
-    <!-- Форма введення (для користувача) -->
     <div id="user-section">
-      <input type="hidden" id="edit-id">
       <p>Дата аналізу: <input type="date" id="test_date"></p>
-      <p>TSH: <input type="number" step="0.01" id="tsh"></p>
-      <p>T3F: <input type="number" step="0.01" id="t3f"></p>
-      <p>T4F: <input type="number" step="0.01" id="t4f"></p>
-      <p>ATPA: <input type="number" step="0.01" id="atpa"></p>
+      <p>TSH / ТТГ: &nbsp;<input type="number" step="0.1" id="tsh"></p>
+      <p>T3f / T3в: &nbsp;<input type="number" step="0.1" id="t3f"></p>
+      <p>T4f / T4в: &nbsp;<input type="number" step="0.1" id="t4f"></p>
+      <p>ATPA / ATПО: <input type="number" step="0.1" id="atpa"></p>
       <button onclick="saveResult()">Зберегти</button>
+      <input type="hidden" id="edit-id">
       <p id="msg"></p>
-
-      <h3>Мої записи</h3>
       <table>
-        <thead>
-          <tr><th>Дата</th><th>TSH</th><th>T3F</th><th>T4F</th><th>ATPA</th><th></th></tr>
-        </thead>
+        <thead><tr><th>Дата</th><th>TSH/ТТГ</th><th>T3f/Т3в</th><th>T4f/Т4в</th><th>ATPA/АТПО</th><th></th></tr></thead>
         <tbody id="results-body"></tbody>
       </table>
     </div>
-
-    <!-- Місце для майбутнього розділу спеціаліста -->
     <div id="specialist-section" style="display:none">
       <p>Розділ спеціаліста буде додано пізніше.</p>
     </div>
   </div>
 
+  <!-- Модальне вікно: завершення реєстрації / редагування профілю -->
+  <div class="modal-overlay" id="profile-modal">
+    <div class="modal">
+      <h3 id="profile-title">Завершіть реєстрацію</h3>
+      <p>Email: <input type="email" id="p-email" readonly></p>
+      <p>Нікнейм: <input type="text" id="p-nickname"></p>
+      <p>Стать:<br>
+        <label><input type="radio" name="p-gender" value="male"> Чоловіча</label>
+        <label><input type="radio" name="p-gender" value="female"> Жіноча</label>
+      </p>
+      <p>Тип акаунта:<br>
+        <label><input type="radio" name="p-role" value="user" checked> Користувач</label>
+        <label><input type="radio" name="p-role" value="specialist"> Спеціаліст</label>
+      </p>
+      <button onclick="saveProfile()">Зберегти</button>
+      <p id="p-msg"></p>
+    </div>
+  </div>
+
   <script>
+    
     const client = window.supabase.createClient('https://pcxhqabkwxfvjywwglss.supabase.co', 'sb_publishable_7fWpSUB3KAEzBhVtPdMR4A_8-YcE-7t');
     let currentUser = null;
 
@@ -79,11 +94,19 @@
       if (!data.session) { window.location.href = 'index.html'; return; }
       currentUser = data.session.user;
 
-      // Визначаємо роль і показуємо відповідний розділ
       const { data: profile } = await client
-        .from('profiles').select('role').eq('id', currentUser.id).single();
+        .from('profiles').select('*').eq('id', currentUser.id).single();
 
-      if (profile && profile.role === 'specialist') {
+      if (!profile || !profile.nickname) {
+        // Новий користувач — спочатку завершує реєстрацію
+        openProfile(true);
+        return; // решту інтерфейсу не показуємо, поки профіль не заповнено
+      }
+      showMain(profile.role);
+    }
+
+    function showMain(role) {
+      if (role === 'specialist') {
         document.getElementById('user-section').style.display = 'none';
         document.getElementById('specialist-section').style.display = 'block';
       } else {
@@ -91,6 +114,53 @@
       }
     }
 
+    // --- Профіль ---
+    function openProfile(isNew = false) {
+      document.getElementById('profile-title').textContent = isNew ? 'Завершіть реєстрацію' : 'Мій профіль';
+      document.getElementById('p-email').value = currentUser.email;
+      document.getElementById('profile-modal').classList.add('show');
+    }
+
+    function closeProfile() {
+      document.getElementById('profile-modal').classList.remove('show');
+    }
+
+    async function saveProfile() {
+      const nickname = document.getElementById('p-nickname').value.trim();
+      const gender = document.querySelector('input[name="p-gender"]:checked');
+      const role = document.querySelector('input[name="p-role"]:checked').value;
+      const msg = document.getElementById('p-msg');
+
+      if (!nickname) { msg.textContent = 'Введіть нікнейм.'; msg.style.color = 'red'; return; }
+      if (!gender) { msg.textContent = 'Оберіть стать.'; msg.style.color = 'red'; return; }
+
+      // Перевірка унікальності нікнейма (регістронезалежна)
+      const { data: taken } = await client
+        .from('profiles')
+        .select('id')
+        .ilike('nickname', nickname)
+        .neq('id', currentUser.id);
+
+      if (taken && taken.length > 0) {
+        msg.textContent = 'Такий нікнейм уже зайнятий. Спробуйте інший.';
+        msg.style.color = 'red';
+        return;
+      }
+
+      const { error } = await client
+        .from('profiles')
+        .upsert({ id: currentUser.id, nickname, gender: gender.value, role });
+
+      if (error) {
+        msg.textContent = error.message;
+        msg.style.color = 'red';
+      } else {
+        closeProfile();
+        showMain(role);
+      }
+    }
+
+    // --- Дані користувача (без змін) ---
     async function saveResult() {
       const record = {
         user_id: currentUser.id,
@@ -102,20 +172,14 @@
       };
       const editId = document.getElementById('edit-id').value;
       const msg = document.getElementById('msg');
-
       if (!record.test_date) { msg.textContent = 'Вкажіть дату.'; msg.style.color='red'; return; }
 
       const query = editId
         ? client.from('test_results').update(record).eq('id', editId)
         : client.from('test_results').insert(record);
-
       const { error } = await query;
       if (error) { msg.textContent = error.message; msg.style.color='red'; }
-      else {
-        msg.textContent = 'Збережено!'; msg.style.color='green';
-        clearForm();
-        loadResults();
-      }
+      else { msg.textContent = 'Збережено!'; msg.style.color='green'; clearForm(); loadResults(); }
     }
 
     async function loadResults() {
@@ -123,11 +187,9 @@
         .from('test_results').select('*')
         .eq('user_id', currentUser.id)
         .order('test_date', { ascending: false });
-
       const body = document.getElementById('results-body');
       body.innerHTML = '';
       if (error) { body.innerHTML = `<tr><td colspan="6">${error.message}</td></tr>`; return; }
-
       data.forEach(r => {
         body.innerHTML += `<tr>
           <td>${r.test_date}</td><td>${r.tsh ?? ''}</td><td>${r.t3f ?? ''}</td>
@@ -135,8 +197,7 @@
           <td>
             <button onclick="editResult(${r.id}, '${r.test_date}', ${r.tsh ?? 'null'}, ${r.t3f ?? 'null'}, ${r.t4f ?? 'null'}, ${r.atpa ?? 'null'})">✎</button>
             <button onclick="deleteResult(${r.id})">✖</button>
-          </td>
-        </tr>`;
+          </td></tr>`;
       });
     }
 
@@ -153,8 +214,7 @@
     async function deleteResult(id) {
       if (!confirm('Видалити цей запис?')) return;
       const { error } = await client.from('test_results').delete().eq('id', id);
-      if (error) alert(error.message);
-      else loadResults();
+      if (error) alert(error.message); else loadResults();
     }
 
     function clearForm() {
