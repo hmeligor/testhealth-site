@@ -2,29 +2,90 @@
 <html lang="uk">
 <head>
   <meta charset="UTF-8">
-  <title>Мій кабінет</title>
+  <title>Мій профіль</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
-  <h2>Ви увійшли!</h2>
-  <p id="user-email"></p>
+  <h2>Завершення реєстрації</h2>
+
+  <p>Нікнейм:<br>
+    <input type="text" id="nickname" placeholder="Наприклад, oleg_ivanov"></p>
+
+  <p>Тип акаунта:<br>
+    <label><input type="radio" name="role" value="user" checked> Користувач</label>
+    <label><input type="radio" name="role" value="specialist"> Спеціаліст</label>
+  </p>
+
+  <p>Email:<br>
+    <input type="email" id="email" readonly></p>
+
+  <p>Пароль:<br>
+    <input type="password" id="password" readonly></p>
+
+  <button onclick="saveProfile()">Зберегти</button>
   <button onclick="signOut()">Вийти</button>
+  <p id="msg"></p>
 
   <script>
-    //const client = window.supabase.createClient('ВАШ_URL', 'ВАШ_ANON_KEY');
     const client = window.supabase.createClient('https://pcxhqabkwxfvjywwglss.supabase.co', 'sb_publishable_7fWpSUB3KAEzBhVtPdMR4A_8-YcE-7t');
-    client.auth.getSession().then(({ data }) => {
+    let currentUser = null;
+
+    async function init() {
+      const { data } = await client.auth.getSession();
       if (!data.session) {
-        window.location.href = 'index.html'; // незалогінений — на вхід
-      } else {
-        document.getElementById('user-email').textContent = data.session.user.email;
+        window.location.href = 'index.html';
+        return;
       }
-    });
+      currentUser = data.session.user;
+
+      // Email підставляємо з сесії, пароль показуємо як крапки
+      document.getElementById('email').value = currentUser.email;
+      document.getElementById('password').value = '********';
+
+      // Якщо профіль уже заповнено — підставляємо збережені дані
+      const { data: profile } = await client
+        .from('profiles')
+        .select('nickname, role')
+        .eq('id', currentUser.id)
+        .single();
+
+      if (profile) {
+        document.getElementById('nickname').value = profile.nickname;
+        document.querySelector(`input[name="role"][value="${profile.role}"]`).checked = true;
+      }
+    }
+
+    async function saveProfile() {
+      const nickname = document.getElementById('nickname').value.trim();
+      const role = document.querySelector('input[name="role"]:checked').value;
+      const msg = document.getElementById('msg');
+
+      if (!nickname) {
+        msg.textContent = 'Введіть нікнейм.';
+        msg.style.color = 'red';
+        return;
+      }
+
+      // upsert: вставить новий рядок або оновить існуючий
+      const { error } = await client
+        .from('profiles')
+        .upsert({ id: currentUser.id, nickname, role });
+
+      if (error) {
+        msg.textContent = error.message;
+        msg.style.color = 'red';
+      } else {
+        msg.textContent = 'Збережено!';
+        msg.style.color = 'green';
+      }
+    }
 
     async function signOut() {
       await client.auth.signOut();
       window.location.href = 'index.html';
     }
+
+    init();
   </script>
 </body>
 </html>
