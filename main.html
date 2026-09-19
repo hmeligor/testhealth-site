@@ -174,7 +174,7 @@
         Object.assign(record, { nickname, gender: gender.value, birth_year: birthYear });
       }
 
-      const { error } = await client.from('profiles').upsert(record);
+      const { error } = await client.from('profiles').upsert(record, {onConflict: 'id'});
 
       if (error) { msg.textContent = error.message; msg.style.color = 'red'; }
       else {
