@@ -5,7 +5,7 @@
   <title>Головна</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
-    body { margin: 0; font-family: sans-serif; }
+    body { margin: 0; font-family: sans-serif; background-color: #cbf3e4}
     nav { background: #333; }
     nav ul { list-style: none; margin: 0; padding: 0; display: flex; }
     nav li { position: relative; }
@@ -71,6 +71,7 @@
       <h3 id="profile-title">Завершіть реєстрацію</h3>
       <p>Email: <input type="email" id="p-email" readonly></p>
       <p>Нікнейм: <input type="text" id="p-nickname"></p>
+      <p>Рік народження: <input type="number" id="p-birth-year" min="1930" max="2025"></p>
       <p>Стать:<br>
         <label><input type="radio" name="p-gender" value="male"> Чоловіча</label>
         <label><input type="radio" name="p-gender" value="female"> Жіноча</label>
@@ -81,12 +82,15 @@
       </p>
       <button onclick="saveProfile()">Зберегти</button>
       <p id="p-msg"></p>
+      <hr>
+      <p><a href="#" onclick="deleteAccount(); return false;" style="color:red">Видалити акаунт</a></p>
     </div>
   </div>
 
   <script>
     
     const client = window.supabase.createClient('https://pcxhqabkwxfvjywwglss.supabase.co', 'sb_publishable_7fWpSUB3KAEzBhVtPdMR4A_8-YcE-7t');
+    let myProfile = null;
     let currentUser = null;
 
     async function init() {
@@ -96,11 +100,11 @@
 
       const { data: profile } = await client
         .from('profiles').select('*').eq('id', currentUser.id).single();
+      myProfile = profile;
 
       if (!profile || !profile.nickname) {
-        // Новий користувач — спочатку завершує реєстрацію
         openProfile(true);
-        return; // решту інтерфейсу не показуємо, поки профіль не заповнено
+        return;
       }
       showMain(profile.role);
     }
@@ -116,8 +120,24 @@
 
     // --- Профіль ---
     function openProfile(isNew = false) {
+      const isFilled = myProfile && myProfile.nickname; // профіль вже заповнено?
       document.getElementById('profile-title').textContent = isNew ? 'Завершіть реєстрацію' : 'Мій профіль';
       document.getElementById('p-email').value = currentUser.email;
+
+      // Нікнейм, стать і рік народження можна заповнити лише один раз
+      document.getElementById('p-nickname').disabled = isFilled;
+      document.getElementById('p-birth-year').disabled = isFilled;
+      document.querySelectorAll('input[name="p-gender"]').forEach(el => el.disabled = isFilled);
+
+      // Підставляємо збережені значення
+      if (isFilled) {
+        document.getElementById('p-nickname').value = myProfile.nickname;
+        document.getElementById('p-birth-year').value = myProfile.birth_year ?? '';
+        if (myProfile.gender) {
+          document.querySelector(`input[name="p-gender"][value="${myProfile.gender}"]`).checked = true;
+        }
+      }
+
       document.getElementById('profile-modal').classList.add('show');
     }
 
@@ -126,37 +146,45 @@
     }
 
     async function saveProfile() {
-      const nickname = document.getElementById('p-nickname').value.trim();
-      const gender = document.querySelector('input[name="p-gender"]:checked');
-      const role = document.querySelector('input[name="p-role"]:checked').value;
       const msg = document.getElementById('p-msg');
+      const role = document.querySelector('input[name="p-role"]:checked').value;
+      const record = { id: currentUser.id, role };
 
-      if (!nickname) { msg.textContent = 'Введіть нікнейм.'; msg.style.color = 'red'; return; }
-      if (!gender) { msg.textContent = 'Оберіть стать.'; msg.style.color = 'red'; return; }
+      if (!myProfile || !myProfile.nickname) {
+        // Перше заповнення — потрібні нікнейм, стать і рік народження
+        const nickname = document.getElementById('p-nickname').value.trim();
+        const gender = document.querySelector('input[name="p-gender"]:checked');
+        const birthYear = parseInt(document.getElementById('p-birth-year').value, 10);
 
-      // Перевірка унікальності нікнейма (регістронезалежна)
-      const { data: taken } = await client
-        .from('profiles')
-        .select('id')
-        .ilike('nickname', nickname)
-        .neq('id', currentUser.id);
+        if (!nickname) { msg.textContent = 'Введіть нікнейм.'; msg.style.color = 'red'; return; }
+        if (!gender) { msg.textContent = 'Оберіть стать.'; msg.style.color = 'red'; return; }
+        if (!birthYear || birthYear < 1930 || birthYear > 2025) {
+          msg.textContent = 'Вкажіть коректний рік народження.'; msg.style.color = 'red'; return;
+        }
 
-      if (taken && taken.length > 0) {
-        msg.textContent = 'Такий нікнейм уже зайнятий. Спробуйте інший.';
-        msg.style.color = 'red';
-        return;
+        const { data: taken } = await client
+          .from('profiles').select('id')
+          .ilike('nickname', nickname);
+        if (taken && taken.length > 0) {
+          msg.textContent = 'Такий нікнейм уже зайнятий. Спробуйте інший.';
+          msg.style.color = 'red';
+          return;
+        }
+
+        Object.assign(record, { nickname, gender: gender.value, birth_year: birthYear });
       }
 
-      const { error } = await client
-        .from('profiles')
-        .upsert({ id: currentUser.id, nickname, gender: gender.value, role });
+      const { error } = await client.from('profiles').upsert(record);
 
-      if (error) {
-        msg.textContent = error.message;
-        msg.style.color = 'red';
-      } else {
+      if (error) { msg.textContent = error.message; msg.style.color = 'red'; }
+      else {
         closeProfile();
-        showMain(role);
+        if (myProfile && myProfile.nickname) {
+          myProfile.role = role; // зміна ролі без перезавантаження
+          showMain(role);
+        } else {
+          window.location.reload(); // перше заповнення — перечитуємо все
+        }
       }
     }
 
@@ -225,6 +253,24 @@
     async function signOut() {
       await client.auth.signOut();
       window.location.href = 'index.html';
+    }
+    
+    async function deleteAccount() {
+      const confirmed = confirm('Ви впевнені? Акаунт і ВСІ ваші дані буде назавжди видалено.');
+      if (!confirmed) return;
+
+      const msg = document.getElementById('p-msg');
+      msg.textContent = 'Видалення акаунта та всіх даних...';
+      msg.style.color = 'red';
+
+      const { data, error } = await client.functions.invoke('delete-account', { method: 'POST' });
+
+      if (error || (data && data.error)) {
+        msg.textContent = 'Помилка: ' + (error?.message ?? data.error);
+      } else {
+        await client.auth.signOut();
+        window.location.href = 'index.html';
+      }
     }
 
     init();
