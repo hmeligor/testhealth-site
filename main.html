@@ -174,7 +174,7 @@
         Object.assign(record, { nickname, gender: gender.value, birth_year: birthYear });
       }
 
-      const { error } = await client.from('profiles').upsert(record, {onConflict: 'id'});
+      const { error } = await client.from('profiles').upsert(record, { onConflict: 'id' });
 
       if (error) { msg.textContent = error.message; msg.style.color = 'red'; }
       else {
@@ -255,18 +255,18 @@
       window.location.href = 'index.html';
     }
     
-    async function deleteAccount() {
-      const confirmed = confirm('Ви впевнені? Акаунт і ВСІ ваші дані буде назавжди видалено.');
+      async function deleteAccount() {
+      const confirmed = confirm('Ви впевнені? Акаунт і ВСІ ваші дані буде назавжди видалено. Цю дію неможливо скасувати.');
       if (!confirmed) return;
 
       const msg = document.getElementById('p-msg');
       msg.textContent = 'Видалення акаунта та всіх даних...';
       msg.style.color = 'red';
 
-      const { data, error } = await client.functions.invoke('delete-account', { method: 'POST' });
+      const { error } = await client.rpc('delete_my_account');
 
-      if (error || (data && data.error)) {
-        msg.textContent = 'Помилка: ' + (error?.message ?? data.error);
+      if (error) {
+        msg.textContent = 'Помилка: ' + error.message;
       } else {
         await client.auth.signOut();
         window.location.href = 'index.html';
