@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Редактор статей — МедПлатформа</title>
+  <link rel="stylesheet" href="css/style.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<base target="_blank">
+</head>
+<body>
+
+  <!-- Шапка -->
+  <header class="header">
+    <div class="container header__inner">
+      <a href="index.html" class="logo logo--link">Мед<span>Платформа</span></a>
+      <div class="header__actions">
+        <a href="index.html" class="btn btn--small btn--outline">На головну</a>
+        <button class="btn btn--small" id="authButton" onclick="logout()">Вийти</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="container">
+    <h2 class="section-title" id="formTitle">Нова стаття</h2>
+
+    <!-- Форма створення / редагування статті -->
+    <form class="editor-form" onsubmit="handleSaveArticle(event)">
+      <input type="hidden" id="articleId">
+      <label>Заголовок *
+        <input type="text" id="articleTitle" required maxlength="200" placeholder="Заголовок статті">
+      </label>
+      <label>Текст статті *
+        <textarea id="articleText" required rows="10" placeholder="Текст статті…"></textarea>
+      </label>
+      <p class="form-error" id="articleError"></p>
+      <div class="editor-form__actions">
+        <button type="submit" class="btn btn--outline" name="status" value="draft">Зберегти черновик</button>
+        <button type="submit" class="btn" name="status" value="published">Опублікувати</button>
+        <button type="button" class="btn btn--outline btn--danger-outline" id="cancelEditBtn" onclick="resetForm()" hidden>Скасувати редагування</button>
+      </div>
+    </form>
+
+    <!-- Мої статті -->
+    <h2 class="section-title section-title--mt">Мої статті</h2>
+    <div id="myArticles">
+      <p class="articles__loading">Завантаження…</p>
+    </div>
+  </main>
+
+  <footer class="footer">
+    <div class="container">
+      <p>МедПлатформа © 2026</p>
+    </div>
+  </footer>
+
+  <script src="js/supabase.js"></script>
+  <script src="js/editor.js"></script>
+</body>
+</html>

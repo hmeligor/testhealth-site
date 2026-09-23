@@ -1,9 +1,13 @@
-// ===== Модальне вікно =====
+// ===== Модальні вікна =====
 function openModal(id) {
   document.getElementById(id).classList.add('modal--open');
 }
 function closeModal(id) {
   document.getElementById(id).classList.remove('modal--open');
+}
+function switchModal(closeId, openId) {
+  closeModal(closeId);
+  openModal(openId);
 }
 // Закриття по кліку на темний фон
 document.querySelectorAll('.modal').forEach(m => {
@@ -12,61 +16,18 @@ document.querySelectorAll('.modal').forEach(m => {
   });
 });
 
-// ===== Вкладки Вхід / Реєстрація =====
-function showTab(tab) {
-  const isLogin = tab === 'login';
-  document.getElementById('formLogin').classList.toggle('form--hidden', !isLogin);
-  document.getElementById('formRegister').classList.toggle('form--hidden', isLogin);
-  document.getElementById('tabLogin').classList.toggle('tabs__btn--active', isLogin);
-  document.getElementById('tabRegister').classList.toggle('tabs__btn--active', !isLogin);
-}
-
-// ===== Кнопка у шапці =====
-function onAuthButton() {
-  const session = supabaseClient.auth.getSession();
-  session.then(({ data }) => {
-    if (data.session) {
-      // Авторизований → виходимо
-      supabaseClient.auth.signOut();
-    } else {
-      // Гість → відкриваємо модальне вікно
-      showTab('login');
-      openModal('authModal');
-    }
-  });
-}
-
-// ===== Стан авторизації =====
+// ===== Перевірка стану авторизації при завантаженні =====
 window.addEventListener('DOMContentLoaded', async () => {
-  updateAuthButton();
+  const { data: { session } } = await supabaseClient.auth.getSession();
+  if (session) showUserMenu(session.user);
   loadArticles();
 });
 
-supabaseClient.auth.onAuthStateChange(() => {
-  updateAuthButton();
+// Слідкуємо за змінами авторизації (вхід/вихід у іншій вкладці)
+supabaseClient.auth.onAuthStateChange((_event, session) => {
+  if (session) showUserMenu(session.user);
+  else showGuestMenu();
 });
-
-function updateAuthButton() {
-  supabaseClient.auth.getSession().then(({ data }) => {
-    const btn = document.getElementById('authButton');
-    btn.textContent = data.session ? 'Вийти' : 'Вхід';
-  });
-}
-
-// ===== Вхід =====
-async function handleLogin(e) {
-  e.preventDefault();
-  const errEl = document.getElementById('loginError');
-  errEl.textContent = '';
-
-  const { error } = await supabaseClient.auth.signInWithPassword({
-    email: document.getElementById('loginEmail').value.trim(),
-    password: document.getElementById('loginPassword').value,
-  });
-
-  if (error) { errEl.textContent = error.message; return; }
-  closeModal('authModal');
-}
 
 // ===== Реєстрація =====
 async function handleRegister(e) {
@@ -84,17 +45,46 @@ async function handleRegister(e) {
   const { data, error } = await supabaseClient.auth.signUp({
     email: document.getElementById('regEmail').value.trim(),
     password: document.getElementById('regPassword').value,
-    options: { data: profile },
+    options: { data: profile }, // метадані → тригер створить рядок у profiles
   });
 
   if (error) { errEl.textContent = error.message; return; }
 
-  closeModal('authModal');
-  if (data.session) {
-    alert('Реєстрація успішна!');
-  } else {
-    alert('Перевір email — ми надіслали посилання для підтвердження.');
-  }
+  closeModal('registerModal');
+  if (data.session) showUserMenu(data.user);
+  else alert('Перевір email — ми надіслали посилання для підтвердження.');
+}
+
+// ===== Вхід =====
+async function handleLogin(e) {
+  e.preventDefault();
+  const errEl = document.getElementById('loginError');
+  errEl.textContent = '';
+
+  const { error } = await supabaseClient.auth.signInWithPassword({
+    email: document.getElementById('loginEmail').value.trim(),
+    password: document.getElementById('loginPassword').value,
+  });
+
+  if (error) { errEl.textContent = error.message; return; }
+  closeModal('loginModal');
+}
+
+// ===== Вихід =====
+async function logout() {
+  await supabaseClient.auth.signOut();
+}
+
+// ===== Меню: гість / користувач =====
+function showUserMenu(user) {
+  document.getElementById('guestMenu').classList.add('nav--hidden');
+  document.getElementById('userMenu').classList.remove('nav--hidden');
+  const nick = user.user_metadata?.nickname || user.email;
+  document.getElementById('helloUser').textContent = 'Привіт, ' + nick + '!';
+}
+function showGuestMenu() {
+  document.getElementById('guestMenu').classList.remove('nav--hidden');
+  document.getElementById('userMenu').classList.add('nav--hidden');
 }
 
 // ===== Завантаження статей =====
@@ -122,7 +112,7 @@ async function loadArticles() {
   `).join('');
 }
 
-// ===== Допоміжні =====
+// ===== Допоміжні функції =====
 function formatDate(iso) {
   return new Date(iso).toLocaleDateString('uk-UA', {
     day: 'numeric', month: 'long', year: 'numeric',
