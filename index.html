@@ -3,60 +3,28 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>МедПлатформа — здоров'я під контролем</title>
+  <title>МедПлатформа — статті спеціалістів</title>
   <link rel="stylesheet" href="css/style.css">
-  <!-- Supabase SDK -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <base target="_blank">
 </head>
 <body>
 
-  <!-- Шапка сайту -->
+  <!-- Шапка: заголовок ліворуч, кнопка ВХІД праворуч -->
   <header class="header">
     <div class="container header__inner">
-      <a href="index.html" class="logo">Мед<span>Платформа</span></a>
-
-      <!-- Меню для гостя -->
-      <nav class="nav" id="guestMenu">
-        <a href="#articles" class="nav__link">Статті</a>
-        <a href="#" class="nav__link" onclick="openModal('loginModal')">Вхід</a>
-        <a href="#" class="btn btn--small" onclick="openModal('registerModal')">Реєстрація</a>
-      </nav>
-
-      <!-- Меню для авторизованого користувача -->
-      <nav class="nav nav--hidden" id="userMenu">
-        <span class="nav__hello" id="helloUser"></span>
-        <a href="#articles" class="nav__link">Статті</a>
-        <a href="#" class="nav__link">Мої дані</a>
-        <a href="#" class="nav__link">Повідомлення</a>
-        <a href="#" class="btn btn--small btn--outline" onclick="logout()">Вийти</a>
-      </nav>
+      <h1 class="logo">Мед<span>Платформа</span></h1>
+      <button class="btn btn--small" id="authButton" onclick="onAuthButton()">Вхід</button>
     </div>
   </header>
 
-  <!-- Головний екран -->
-  <section class="hero">
-    <div class="container">
-      <h1>Твій місток до здоров'я</h1>
-      <p>Платформа, де пацієнти та медичні спеціалісти знаходять один одного,
-         обмінюються даними обстежень та знаннями.</p>
-      <div class="hero__actions">
-        <a href="#" class="btn" onclick="openModal('registerModal')">Почати безкоштовно</a>
-        <a href="#articles" class="btn btn--outline">Читати статті</a>
-      </div>
+  <!-- Статті -->
+  <main class="container">
+    <h2 class="section-title">Статті спеціалістів</h2>
+    <div class="articles__grid" id="articlesGrid">
+      <p class="articles__loading" id="articlesLoading">Завантаження статей…</p>
     </div>
-  </section>
-
-  <!-- Секція статей -->
-  <section class="articles" id="articles">
-    <div class="container">
-      <h2 class="section-title">Статті спеціалістів</h2>
-      <div class="articles__grid" id="articlesGrid">
-        <!-- Статті підвантажуються з Supabase -->
-        <p class="articles__loading" id="articlesLoading">Завантаження статей…</p>
-      </div>
-    </div>
-  </section>
+  </main>
 
   <!-- Підвал -->
   <footer class="footer">
@@ -65,12 +33,19 @@
     </div>
   </footer>
 
-  <!-- Модальне вікно: Вхід -->
-  <div class="modal" id="loginModal">
+  <!-- Модальне вікно: Вхід / Реєстрація -->
+  <div class="modal" id="authModal">
     <div class="modal__box">
-      <button class="modal__close" onclick="closeModal('loginModal')">&times;</button>
-      <h3>Вхід</h3>
-      <form onsubmit="handleLogin(event)">
+      <button class="modal__close" onclick="closeModal('authModal')">&times;</button>
+
+      <!-- Перемикач вкладок -->
+      <div class="tabs">
+        <button class="tabs__btn tabs__btn--active" id="tabLogin" onclick="showTab('login')">Вхід</button>
+        <button class="tabs__btn" id="tabRegister" onclick="showTab('register')">Реєстрація</button>
+      </div>
+
+      <!-- Вкладка: Вхід -->
+      <form id="formLogin" onsubmit="handleLogin(event)">
         <label>Email
           <input type="email" id="loginEmail" required placeholder="you@example.com">
         </label>
@@ -79,19 +54,10 @@
         </label>
         <p class="form-error" id="loginError"></p>
         <button type="submit" class="btn btn--full">Увійти</button>
-        <p class="form-switch">Немає акаунту?
-          <a href="#" onclick="switchModal('loginModal','registerModal')">Зареєструватися</a>
-        </p>
       </form>
-    </div>
-  </div>
 
-  <!-- Модальне вікно: Реєстрація -->
-  <div class="modal" id="registerModal">
-    <div class="modal__box">
-      <button class="modal__close" onclick="closeModal('registerModal')">&times;</button>
-      <h3>Реєстрація</h3>
-      <form onsubmit="handleRegister(event)">
+      <!-- Вкладка: Реєстрація -->
+      <form id="formRegister" class="form--hidden" onsubmit="handleRegister(event)">
         <label>Нікнейм *
           <input type="text" id="regNickname" required maxlength="30" placeholder="Як до вас звертатися">
         </label>
@@ -121,9 +87,6 @@
         </label>
         <p class="form-error" id="regError"></p>
         <button type="submit" class="btn btn--full">Зареєструватися</button>
-        <p class="form-switch">Вже є акаунт?
-          <a href="#" onclick="switchModal('registerModal','loginModal')">Увійти</a>
-        </p>
       </form>
     </div>
   </div>
