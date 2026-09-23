@@ -6,6 +6,7 @@
   <title>МедПлатформа — статті спеціалістів</title>
   <link rel="stylesheet" href="css/style.css">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<base target="_blank">
 </head>
 <body>
 
@@ -15,6 +16,15 @@
       <h1 class="logo">Мед<span>Платформа</span></h1>
       <div class="header__actions">
         <a href="editor.html" class="btn btn--small btn--outline header__btn--hidden" id="editorButton">Створити статтю</a>
+        <!-- Меню користувача: нікнейм + випадний список -->
+        <div class="user-menu" id="userMenu" hidden>
+          <button class="btn btn--small user-menu__button" id="userMenuButton" onclick="toggleUserMenu()"></button>
+          <div class="user-menu__dropdown" id="userMenuDropdown">
+            <button onclick="logout()">Вийти</button>
+            <button class="user-menu__danger" onclick="deleteProfile()">Видалити профіль</button>
+          </div>
+        </div>
+        <!-- Кнопка для гостя -->
         <button class="btn btn--small" id="authButton" onclick="onAuthButton()">Вхід</button>
       </div>
     </div>

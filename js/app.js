@@ -23,17 +23,34 @@ function showTab(tab) {
 
 // ===== Кнопка у шапці =====
 function onAuthButton() {
-  const session = supabaseClient.auth.getSession();
-  session.then(({ data }) => {
-    if (data.session) {
-      // Авторизований → виходимо
-      supabaseClient.auth.signOut();
-    } else {
-      // Гість → відкриваємо модальне вікно
-      showTab('login');
-      openModal('authModal');
-    }
-  });
+  // Гість → відкриваємо модальне вікно
+  showTab('login');
+  openModal('authModal');
+}
+
+// ===== Випадне меню користувача =====
+function toggleUserMenu() {
+  document.getElementById('userMenuDropdown').classList.toggle('user-menu__dropdown--open');
+}
+// Закриття меню при кліку поза ним
+document.addEventListener('click', e => {
+  const menu = document.getElementById('userMenu');
+  if (menu && !menu.contains(e.target)) {
+    document.getElementById('userMenuDropdown')?.classList.remove('user-menu__dropdown--open');
+  }
+});
+
+// ===== Вихід =====
+async function logout() {
+  await supabaseClient.auth.signOut();
+}
+
+// ===== Видалення профілю =====
+async function deleteProfile() {
+  if (!confirm('Видалити профіль назавжди? Цю дію неможливо скасувати.')) return;
+  const { error } = await supabaseClient.rpc('delete_own_account');
+  if (error) { alert('Помилка: ' + error.message); return; }
+  await supabaseClient.auth.signOut();
 }
 
 // ===== Стан авторизації =====
@@ -49,14 +66,22 @@ supabaseClient.auth.onAuthStateChange(() => {
 function updateAuthButton() {
   supabaseClient.auth.getSession().then(({ data }) => {
     const btn = document.getElementById('authButton');
+    const userMenu = document.getElementById('userMenu');
+    const userMenuButton = document.getElementById('userMenuButton');
     const editorBtn = document.getElementById('editorButton');
     if (data.session) {
-      btn.textContent = 'Вийти';
+      // Авторизований: показуємо нікнейм, ховаємо кнопку «Вхід»
+      btn.hidden = true;
+      userMenu.hidden = false;
+      userMenuButton.textContent = data.session.user.user_metadata?.nickname || 'Профіль';
       // Кнопку редактора показуємо тільки спеціалістам
       const role = data.session.user.user_metadata?.role;
       editorBtn.classList.toggle('header__btn--hidden', role !== 'specialist');
     } else {
+      // Гість: показуємо кнопку «Вхід», ховаємо меню
+      btn.hidden = false;
       btn.textContent = 'Вхід';
+      userMenu.hidden = true;
       editorBtn.classList.add('header__btn--hidden');
     }
   });
