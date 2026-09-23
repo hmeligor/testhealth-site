@@ -21,9 +21,8 @@ function showTab(tab) {
   document.getElementById('tabRegister').classList.toggle('tabs__btn--active', !isLogin);
 }
 
-// ===== Кнопка у шапці =====
+// ===== Кнопка у шапці (для гостя) =====
 function onAuthButton() {
-  // Гість → відкриваємо модальне вікно
   showTab('login');
   openModal('authModal');
 }
@@ -55,7 +54,7 @@ async function deleteProfile() {
 
 // ===== Стан авторизації =====
 window.addEventListener('DOMContentLoaded', async () => {
-  updateAuthButton();
+  await updateAuthButton();
   loadArticles();
 });
 
@@ -63,72 +62,38 @@ supabaseClient.auth.onAuthStateChange(() => {
   updateAuthButton();
 });
 
-function updateAuthButton() {
-  supabaseClient.auth.getSession().then(({ data }) => {
-    const btn = document.getElementById('authButton');
-    const userMenu = document.getElementById('userMenu');
-    const userMenuButton = document.getElementById('userMenuButton');
-    const editorBtn = document.getElementById('editorButton');
-    if (data.session) {
-      // Авторизований: показуємо нікнейм, ховаємо кнопку «Вхід»
-      btn.hidden = true;
-      userMenu.hidden = false;
-      userMenuButton.textContent = data.session.user.user_metadata?.nickname || 'Профіль';
-      // Кнопку редактора показуємо тільки спеціалістам
-      const role = data.session.user.user_metadata?.role;
-      editorBtn.classList.toggle('header__btn--hidden', role !== 'specialist');
-    } else {
-      // Гість: показуємо кнопку «Вхід», ховаємо меню
-      btn.hidden = false;
-      btn.textContent = 'Вхід';
-      userMenu.hidden = true;
-      editorBtn.classList.add('header__btn--hidden');
-    }
-  });
-}
+async function updateAuthButton() {
+  const btn = document.getElementById('authButton');
+  const userMenu = document.getElementById('userMenu');
+  const userMenuButton = document.getElementById('userMenuButton');
+  const editorBtn = document.getElementById('editorButton');
 
-// ===== Вхід =====
-async function handleLogin(e) {
-  e.preventDefault();
-  const errEl = document.getElementById('loginError');
-  errEl.textContent = '';
+  const { data: { session } } = await supabaseClient.auth.getSession();
 
-  const { error } = await supabaseClient.auth.signInWithPassword({
-    email: document.getElementById('loginEmail').value.trim(),
-    password: document.getElementById('loginPassword').value,
-  });
-
-  if (error) { errEl.textContent = error.message; return; }
-  closeModal('authModal');
-}
-
-// ===== Реєстрація =====
-async function handleRegister(e) {
-  e.preventDefault();
-  const errEl = document.getElementById('regError');
-  errEl.textContent = '';
-
-  const profile = {
-    nickname: document.getElementById('regNickname').value.trim(),
-    gender: document.getElementById('regGender').value,
-    birth_year: Number(document.getElementById('regBirthYear').value),
-    role: document.getElementById('regRole').value,
-  };
-
-  const { data, error } = await supabaseClient.auth.signUp({
-    email: document.getElementById('regEmail').value.trim(),
-    password: document.getElementById('regPassword').value,
-    options: { data: profile },
-  });
-
-  if (error) { errEl.textContent = error.message; return; }
-
-  closeModal('authModal');
-  if (data.session) {
-    alert('Реєстрація успішна!');
-  } else {
-    alert('Перевір email — ми надіслали посилання для підтвердження.');
+  if (!session) {
+    // Гість: кнопка «Вхід», меню користувача сховане
+    btn.hidden = false;
+    btn.textContent = 'Вхід';
+    userMenu.hidden = true;
+    editorBtn.classList.add('header__btn--hidden');
+    return;
   }
+
+  // Авторизований: ховаємо «Вхід», показуємо меню з нікнеймом
+  btn.hidden = true;
+  userMenu.hidden = false;
+
+  // Нікнейм і роль беремо з бази (працює для всіх акаунтів, навіть старих)
+  const { data: profile } = await supabaseClient
+    .from('profiles')
+    .select('nickname, role')
+    .eq('id', session.user.id)
+    .single();
+
+  userMenuButton.textContent = profile?.nickname || session.user.email;
+
+  // Кнопку редактора показуємо тільки спеціалістам
+  editorBtn.classList.toggle('header__btn--hidden', profile?.role !== 'specialist');
 }
 
 // ===== Завантаження статей =====
