@@ -2,87 +2,133 @@
 <html lang="uk">
 <head>
   <meta charset="UTF-8">
-  <title>Вхід на сайт</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>МедПлатформа — здоров'я під контролем</title>
+  <link rel="stylesheet" href="css/style.css">
+  <!-- Supabase SDK -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <style>
-    body {
-          font-family: sans-serif;
-          text-align: center;
-          margin: 0;
-          padding: 0;
-          background-color: #f9f9f9;
-          color: #321d49;
-        }
-    h2 { color: #2c3e50; border-bottom: 2px solid #f8272a; padding-bottom: 10px; }
-  </style>
+<base target="_blank">
 </head>
 <body>
-  <div id="auth-form">
-    <h2>Вхід / Реєстрація</h2>
-    <input type="email" id="email" placeholder="Email"><br><br>
-    <input type="password" id="password" placeholder="Пароль"><br><br>
-    <button onclick="signIn()">Увійти</button>
-    <button onclick="signUp()">Зареєструватись</button><br><br>
-    <a href="#" onclick="resetPassword(); return false;">Забули пароль?</a>
-    <p id="msg"></p>
+
+  <!-- Шапка сайту -->
+  <header class="header">
+    <div class="container header__inner">
+      <a href="index.html" class="logo">Мед<span>Платформа</span></a>
+
+      <!-- Меню для гостя -->
+      <nav class="nav" id="guestMenu">
+        <a href="#articles" class="nav__link">Статті</a>
+        <a href="#" class="nav__link" onclick="openModal('loginModal')">Вхід</a>
+        <a href="#" class="btn btn--small" onclick="openModal('registerModal')">Реєстрація</a>
+      </nav>
+
+      <!-- Меню для авторизованого користувача -->
+      <nav class="nav nav--hidden" id="userMenu">
+        <span class="nav__hello" id="helloUser"></span>
+        <a href="#articles" class="nav__link">Статті</a>
+        <a href="#" class="nav__link">Мої дані</a>
+        <a href="#" class="nav__link">Повідомлення</a>
+        <a href="#" class="btn btn--small btn--outline" onclick="logout()">Вийти</a>
+      </nav>
+    </div>
+  </header>
+
+  <!-- Головний екран -->
+  <section class="hero">
+    <div class="container">
+      <h1>Твій місток до здоров'я</h1>
+      <p>Платформа, де пацієнти та медичні спеціалісти знаходять один одного,
+         обмінюються даними обстежень та знаннями.</p>
+      <div class="hero__actions">
+        <a href="#" class="btn" onclick="openModal('registerModal')">Почати безкоштовно</a>
+        <a href="#articles" class="btn btn--outline">Читати статті</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- Секція статей -->
+  <section class="articles" id="articles">
+    <div class="container">
+      <h2 class="section-title">Статті спеціалістів</h2>
+      <div class="articles__grid" id="articlesGrid">
+        <!-- Статті підвантажуються з Supabase -->
+        <p class="articles__loading" id="articlesLoading">Завантаження статей…</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Підвал -->
+  <footer class="footer">
+    <div class="container">
+      <p>МедПлатформа © 2026 · Дані медичних обстежень заповнює користувач самостійно</p>
+    </div>
+  </footer>
+
+  <!-- Модальне вікно: Вхід -->
+  <div class="modal" id="loginModal">
+    <div class="modal__box">
+      <button class="modal__close" onclick="closeModal('loginModal')">&times;</button>
+      <h3>Вхід</h3>
+      <form onsubmit="handleLogin(event)">
+        <label>Email
+          <input type="email" id="loginEmail" required placeholder="you@example.com">
+        </label>
+        <label>Пароль
+          <input type="password" id="loginPassword" required placeholder="••••••••">
+        </label>
+        <p class="form-error" id="loginError"></p>
+        <button type="submit" class="btn btn--full">Увійти</button>
+        <p class="form-switch">Немає акаунту?
+          <a href="#" onclick="switchModal('loginModal','registerModal')">Зареєструватися</a>
+        </p>
+      </form>
+    </div>
   </div>
 
-  <script>
-    const SUPABASE_URL = 'https://pcxhqabkwxfvjywwglss.supabase.co';
-    const SUPABASE_KEY = 'sb_publishable_7fWpSUB3KAEzBhVtPdMR4A_8-YcE-7t';
-    const client = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+  <!-- Модальне вікно: Реєстрація -->
+  <div class="modal" id="registerModal">
+    <div class="modal__box">
+      <button class="modal__close" onclick="closeModal('registerModal')">&times;</button>
+      <h3>Реєстрація</h3>
+      <form onsubmit="handleRegister(event)">
+        <label>Нікнейм *
+          <input type="text" id="regNickname" required maxlength="30" placeholder="Як до вас звертатися">
+        </label>
+        <label>Стать *
+          <select id="regGender" required>
+            <option value="">Оберіть…</option>
+            <option value="female">Жіноча</option>
+            <option value="male">Чоловіча</option>
+            <option value="other">Інша</option>
+          </select>
+        </label>
+        <label>Рік народження *
+          <input type="number" id="regBirthYear" required min="1920" max="2026" placeholder="1990">
+        </label>
+        <label>Роль *
+          <select id="regRole" required>
+            <option value="">Оберіть…</option>
+            <option value="user">Користувач (пацієнт)</option>
+            <option value="specialist">Спеціаліст</option>
+          </select>
+        </label>
+        <label>Email *
+          <input type="email" id="regEmail" required placeholder="you@example.com">
+        </label>
+        <label>Пароль * (мін. 6 символів)
+          <input type="password" id="regPassword" required minlength="6" placeholder="••••••••">
+        </label>
+        <p class="form-error" id="regError"></p>
+        <button type="submit" class="btn btn--full">Зареєструватися</button>
+        <p class="form-switch">Вже є акаунт?
+          <a href="#" onclick="switchModal('registerModal','loginModal')">Увійти</a>
+        </p>
+      </form>
+    </div>
+  </div>
 
-    function showMsg(text, isError = true) {
-      const el = document.getElementById('msg');
-      el.textContent = text;
-      el.style.color = isError ? 'red' : 'green';
-    }
-
-    async function signUp() {
-      const email = document.getElementById('email').value;
-      const password = document.getElementById('password').value;
-      const { error } = await client.auth.signUp({ email, password });
-
-      if (error) {
-        // Саме тут ми перевіряємо, чи існує користувач
-        if (error.message.includes('already registered') || error.message.includes('already been registered')) {
-          showMsg('Користувач із таким email вже існує. Спробуйте увійти.');
-        } else {
-          showMsg(error.message);
-        }
-      } else {
-        showMsg('На пошту надіслано лист із підтвердженням. Перейдіть за посиланням у листі.', false);
-      }
-    }
-
-    async function signIn() {
-      const { error } = await client.auth.signInWithPassword({
-        email: document.getElementById('email').value,
-        password: document.getElementById('password').value
-      });
-      if (error) {
-        showMsg('Невірний email або пароль.');
-      } else {
-        window.location.href = 'main.html'; // ← перенаправлення після входу
-      }
-    }
-
-    async function resetPassword() {
-      const email = document.getElementById('email').value;
-      if (!email) {
-        showMsg('Спочатку введіть ваш email у полі вище.');
-        return;
-      }
-      const { error } = await client.auth.resetPasswordForEmail(email, {
-        redirectTo: window.location.origin + '/reset.html'
-      });
-      showMsg(error ? error.message : 'Лист для відновлення пароля надіслано на пошту.', !error);
-    }
-
-    // Якщо вже залогінений — одразу на dashboard
-    client.auth.getSession().then(({ data }) => {
-      if (data.session) window.location.href = 'main.html';
-    });
-  </script>
+  <script src="js/supabase.js"></script>
+  <script src="js/app.js"></script>
 </body>
 </html>
