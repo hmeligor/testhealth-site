@@ -6,7 +6,6 @@
   <title>МедПлатформа — статті спеціалістів</title>
   <link rel="stylesheet" href="css/style.css">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<base target="_blank">
 </head>
 <body>
 
@@ -14,7 +13,10 @@
   <header class="header">
     <div class="container header__inner">
       <h1 class="logo">Мед<span>Платформа</span></h1>
-      <button class="btn btn--small" id="authButton" onclick="onAuthButton()">Вхід</button>
+      <div class="header__actions">
+        <a href="editor.html" class="btn btn--small btn--outline header__btn--hidden" id="editorButton">Створити статтю</a>
+        <button class="btn btn--small" id="authButton" onclick="onAuthButton()">Вхід</button>
+      </div>
     </div>
   </header>
 
