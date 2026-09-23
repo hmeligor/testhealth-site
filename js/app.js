@@ -21,40 +21,24 @@ function showTab(tab) {
   document.getElementById('tabRegister').classList.toggle('tabs__btn--active', !isLogin);
 }
 
-// ===== Кнопка у шапці (для гостя) =====
+// ===== Кнопка у шапці =====
 function onAuthButton() {
-  showTab('login');
-  openModal('authModal');
-}
-
-// ===== Випадне меню користувача =====
-function toggleUserMenu() {
-  document.getElementById('userMenuDropdown').classList.toggle('user-menu__dropdown--open');
-}
-// Закриття меню при кліку поза ним
-document.addEventListener('click', e => {
-  const menu = document.getElementById('userMenu');
-  if (menu && !menu.contains(e.target)) {
-    document.getElementById('userMenuDropdown')?.classList.remove('user-menu__dropdown--open');
-  }
-});
-
-// ===== Вихід =====
-async function logout() {
-  await supabaseClient.auth.signOut();
-}
-
-// ===== Видалення профілю =====
-async function deleteProfile() {
-  if (!confirm('Видалити профіль назавжди? Цю дію неможливо скасувати.')) return;
-  const { error } = await supabaseClient.rpc('delete_own_account');
-  if (error) { alert('Помилка: ' + error.message); return; }
-  await supabaseClient.auth.signOut();
+  const session = supabaseClient.auth.getSession();
+  session.then(({ data }) => {
+    if (data.session) {
+      // Авторизований → виходимо
+      supabaseClient.auth.signOut();
+    } else {
+      // Гість → відкриваємо модальне вікно
+      showTab('login');
+      openModal('authModal');
+    }
+  });
 }
 
 // ===== Стан авторизації =====
 window.addEventListener('DOMContentLoaded', async () => {
-  await updateAuthButton();
+  updateAuthButton();
   loadArticles();
 });
 
@@ -62,38 +46,55 @@ supabaseClient.auth.onAuthStateChange(() => {
   updateAuthButton();
 });
 
-async function updateAuthButton() {
-  const btn = document.getElementById('authButton');
-  const userMenu = document.getElementById('userMenu');
-  const userMenuButton = document.getElementById('userMenuButton');
-  const editorBtn = document.getElementById('editorButton');
+function updateAuthButton() {
+  supabaseClient.auth.getSession().then(({ data }) => {
+    const btn = document.getElementById('authButton');
+    btn.textContent = data.session ? 'Вийти' : 'Вхід';
+  });
+}
 
-  const { data: { session } } = await supabaseClient.auth.getSession();
+// ===== Вхід =====
+async function handleLogin(e) {
+  e.preventDefault();
+  const errEl = document.getElementById('loginError');
+  errEl.textContent = '';
 
-  if (!session) {
-    // Гість: кнопка «Вхід», меню користувача сховане
-    btn.hidden = false;
-    btn.textContent = 'Вхід';
-    userMenu.hidden = true;
-    editorBtn.classList.add('header__btn--hidden');
-    return;
+  const { error } = await supabaseClient.auth.signInWithPassword({
+    email: document.getElementById('loginEmail').value.trim(),
+    password: document.getElementById('loginPassword').value,
+  });
+
+  if (error) { errEl.textContent = error.message; return; }
+  closeModal('authModal');
+}
+
+// ===== Реєстрація =====
+async function handleRegister(e) {
+  e.preventDefault();
+  const errEl = document.getElementById('regError');
+  errEl.textContent = '';
+
+  const profile = {
+    nickname: document.getElementById('regNickname').value.trim(),
+    gender: document.getElementById('regGender').value,
+    birth_year: Number(document.getElementById('regBirthYear').value),
+    role: document.getElementById('regRole').value,
+  };
+
+  const { data, error } = await supabaseClient.auth.signUp({
+    email: document.getElementById('regEmail').value.trim(),
+    password: document.getElementById('regPassword').value,
+    options: { data: profile },
+  });
+
+  if (error) { errEl.textContent = error.message; return; }
+
+  closeModal('authModal');
+  if (data.session) {
+    alert('Реєстрація успішна!');
+  } else {
+    alert('Перевір email — ми надіслали посилання для підтвердження.');
   }
-
-  // Авторизований: ховаємо «Вхід», показуємо меню з нікнеймом
-  btn.hidden = true;
-  userMenu.hidden = false;
-
-  // Нікнейм і роль беремо з бази (працює для всіх акаунтів, навіть старих)
-  const { data: profile } = await supabaseClient
-    .from('profiles')
-    .select('nickname, role')
-    .eq('id', session.user.id)
-    .single();
-
-  userMenuButton.textContent = profile?.nickname || session.user.email;
-
-  // Кнопку редактора показуємо тільки спеціалістам
-  editorBtn.classList.toggle('header__btn--hidden', profile?.role !== 'specialist');
 }
 
 // ===== Завантаження статей =====
