@@ -64,8 +64,20 @@ create policy "specialists can write" on articles
     auth.uid() = author_id
     and exists (select 1 from profiles where id = auth.uid() and role = 'specialist')
   );
+-- 3.1 Видалення власного акаунта (користувач може видалити свій профіль)
+create or replace function public.delete_own_account()
+returns void
+language sql security definer set search_path = public
+as $$
+  delete from auth.users where id = auth.uid();
+$$;
+
+grant execute on function public.delete_own_account() to authenticated;
+
 create policy "author can edit" on articles
   for update using (auth.uid() = author_id);
+create policy "author can delete" on articles
+  for delete using (auth.uid() = author_id);
 
 -- 4. Тестова стаття (для перевірки головної сторінки)
 -- Її має опублікувати спеціаліст через базу, або через майбутню сторінку редактора.
